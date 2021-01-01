@@ -12,3 +12,5 @@ r
 *.sav
 
 *.exe
+
+/dmgo
