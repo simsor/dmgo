@@ -60,6 +60,7 @@ func updateKeyState() {
 	case kindle.RPageNext:
 		currentKindleKeys.RPageNext = v
 	case kindle.Home:
+		kindle.ClearScreen()
 		os.Exit(0)
 	}
 }
