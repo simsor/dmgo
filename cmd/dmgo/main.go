@@ -88,10 +88,14 @@ func startEmu(filename string, emu dmgo.Emulator) {
 
 	//frameTimer := glimmer.MakeFrameTimer(1.0 / 60.0)
 
-	//lastSaveTime := time.Now()
+	lastSaveTime := time.Now()
 	lastInputPollTime := time.Now()
 
 	count := 0
+	screen := kindle.Framebuffer().Buffer()
+	line := make([]byte, 2*160)
+	xOffset := (600/2 - 160)
+	yOffset := (800/2 - 144)
 	for {
 
 		count++
@@ -126,22 +130,18 @@ func startEmu(filename string, emu dmgo.Emulator) {
 
 		if emu.FlipRequested() {
 			fb := emu.Framebuffer()
-			for i := 0; i < len(fb); i += 4 {
-				r, g, b, a := fb[i], fb[i+1], fb[i+2], fb[i+3]
-				c := color.RGBA{r, g, b, a}
-				x := (i / 4) % 160 // + (600/2 - 160/2)
-				y := (i / 4) / 160 // + (800/2 - 144/2)
+			for l := 0; l < 144; l++ {
+				offset := l * 4 * 160
+				for i := 0; i < 160*4; i += 4 {
+					r, g, b := fb[i+offset], fb[i+1+offset], fb[i+2+offset]
+					c := color.GrayModel.Convert(color.RGBA{r, g, b, 255})
+					r2, _, _, _ := c.RGBA()
+					line[(i/4)*2] = ^byte(r2)
+					line[(i/4)*2+1] = ^byte(r2)
+				}
 
-				x *= 2
-				y *= 2
-
-				x += (600/2 - 160)
-				y += (800/2 - 144)
-
-				kindle.Framebuffer().Set(x, y, c)
-				kindle.Framebuffer().Set(x+1, y, c)
-				kindle.Framebuffer().Set(x+1, y+1, c)
-				kindle.Framebuffer().Set(x, y+1, c)
+				copy(screen[(l*2+yOffset)*600+xOffset:], line)
+				copy(screen[(l*2+1+yOffset)*600+xOffset:], line)
 			}
 			kindle.Framebuffer().DirtyRefresh()
 
@@ -150,13 +150,13 @@ func startEmu(filename string, emu dmgo.Emulator) {
 			//	frameTimer.PrintStatsEveryXFrames(60 * 5)
 			//}
 
-			/*if time.Now().Sub(lastSaveTime) > 5*time.Second {
+			if time.Now().Sub(lastSaveTime) > 5*time.Second {
 				ram := emu.GetCartRAM()
 				if len(ram) > 0 {
 					ioutil.WriteFile(saveFilename, ram, os.FileMode(0644))
 					lastSaveTime = time.Now()
 				}
-			}*/
+			}
 		}
 	}
 }

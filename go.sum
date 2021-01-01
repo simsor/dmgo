@@ -12,6 +12,8 @@ github.com/simsor/go-kindle v0.0.0-20210101180818-3f282d570266 h1:jIVL4IeOyzECmd
 github.com/simsor/go-kindle v0.0.0-20210101180818-3f282d570266/go.mod h1:ZwT9B16XrB21FHg2mK7uFA+boAEeUQBwSGcfDjmta1c=
 github.com/simsor/go-kindle v0.0.0-20210101183628-085b91a79be0 h1:pllz9eRFUQvPEVnzMValK7LLPzF2cdn+DI4WD0EEFss=
 github.com/simsor/go-kindle v0.0.0-20210101183628-085b91a79be0/go.mod h1:ZwT9B16XrB21FHg2mK7uFA+boAEeUQBwSGcfDjmta1c=
+github.com/simsor/go-kindle v0.0.0-20210101192420-1fee6e829e8d h1:NKG32GngBhnRuzvwsGidXVN75s2n3eHNSA3M/VwGEAw=
+github.com/simsor/go-kindle v0.0.0-20210101192420-1fee6e829e8d/go.mod h1:ZwT9B16XrB21FHg2mK7uFA+boAEeUQBwSGcfDjmta1c=
 github.com/theinternetftw/dmgo v0.0.0-20190419035455-017ab82e106b h1:+5jh5K8W8Z9QA5TJCTKDNcNbJgKlUu1iuBcmpRHKYkM=
 github.com/theinternetftw/dmgo v0.0.0-20190419035455-017ab82e106b/go.mod h1:FjgMEwEhUD5Dq47rv0T3iCVO0FszMxxWT4FK0Xl2l6w=
 github.com/theinternetftw/glimmer v0.0.3 h1:CfQkBRu2yyQPzVz3NASwr2cCa/B3PbgvTsJyxGUNzmM=
