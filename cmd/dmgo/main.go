@@ -1,9 +1,10 @@
 package main
 
 import (
+	"image/color"
+
+	"github.com/simsor/go-kindle/kindle"
 	"github.com/theinternetftw/dmgo"
-	"github.com/theinternetftw/dmgo/profiling"
-	"github.com/theinternetftw/glimmer"
 
 	"fmt"
 	"io/ioutil"
@@ -12,8 +13,8 @@ import (
 )
 
 func main() {
-
-	defer profiling.Start().Stop()
+	kindle.ClearScreen()
+	go kindleKeyWorker()
 
 	assert(len(os.Args) == 2, "usage: ./dmgo ROM_FILENAME")
 	cartFilename := os.Args[1]
@@ -27,7 +28,6 @@ func main() {
 	devMode := fileExists("devmode")
 
 	var emu dmgo.Emulator
-	windowTitle := "dmgo"
 
 	fileMagic := string(cartBytes[:3])
 	if fileMagic == "GBS" {
@@ -37,20 +37,16 @@ func main() {
 		// rom file
 
 		cartInfo := dmgo.ParseCartInfo(cartBytes)
-		if devMode {
-			fmt.Printf("Game title: %q\n", cartInfo.Title)
-			fmt.Printf("Cart type: %d\n", cartInfo.CartridgeType)
-			fmt.Printf("Cart RAM size: %d\n", cartInfo.GetRAMSize())
-			fmt.Printf("Cart ROM size: %d\n", cartInfo.GetROMSize())
-		}
+
+		fmt.Printf("Game title: %q\n", cartInfo.Title)
+		fmt.Printf("Cart type: %d\n", cartInfo.CartridgeType)
+		fmt.Printf("Cart RAM size: %d\n", cartInfo.GetRAMSize())
+		fmt.Printf("Cart ROM size: %d\n", cartInfo.GetROMSize())
 
 		emu = dmgo.NewEmulator(cartBytes, devMode)
-		windowTitle = fmt.Sprintf("dmgo - %q", cartInfo.Title)
 	}
 
-	glimmer.InitDisplayLoop(windowTitle, 160*4, 144*4, 160, 144, func(sharedState *glimmer.WindowState) {
-		startEmu(cartFilename, sharedState, emu)
-	})
+	startEmu(cartFilename, emu)
 }
 
 func fileExists(path string) bool {
@@ -70,9 +66,9 @@ func startHeadlessEmu(emu dmgo.Emulator) {
 	}
 }
 
-func startEmu(filename string, window *glimmer.WindowState, emu dmgo.Emulator) {
+func startEmu(filename string, emu dmgo.Emulator) {
 
-	snapshotPrefix := filename + ".snapshot"
+	//snapshotPrefix := filename + ".snapshot"
 
 	saveFilename := filename + ".sav"
 	if saveFile, err := ioutil.ReadFile(saveFilename); err == nil {
@@ -84,17 +80,15 @@ func startEmu(filename string, window *glimmer.WindowState, emu dmgo.Emulator) {
 		}
 	}
 
-	audio, err := glimmer.OpenAudioBuffer(2, 8192, 44100, 16, 2)
-	workingAudioBuffer := make([]byte, audio.BufferSize())
-	dieIf(err)
-
-	snapshotMode := 'x'
+	//audio, err := glimmer.OpenAudioBuffer(2, 8192, 44100, 16, 2)
+	//workingAudioBuffer := make([]byte, audio.BufferSize())
+	//dieIf(err)
 
 	newInput := dmgo.Input{}
 
-	frameTimer := glimmer.MakeFrameTimer(1.0 / 60.0)
+	//frameTimer := glimmer.MakeFrameTimer(1.0 / 60.0)
 
-	lastSaveTime := time.Now()
+	//lastSaveTime := time.Now()
 	lastInputPollTime := time.Now()
 
 	count := 0
@@ -108,56 +102,21 @@ func startEmu(filename string, window *glimmer.WindowState, emu dmgo.Emulator) {
 			inputDiff := now.Sub(lastInputPollTime)
 
 			if inputDiff > 8*time.Millisecond {
-				window.InputMutex.Lock()
-				bDown := window.CharIsDown('b')
+				// Button input update
+
 				newInput = dmgo.Input{
 					Joypad: dmgo.Joypad{
-						Sel: bDown || window.CharIsDown('t'),
-						Start: bDown || window.CharIsDown('y'),
-						Up: window.CharIsDown('w'),
-						Down: window.CharIsDown('s'),
-						Left: window.CharIsDown('a'),
-						Right: window.CharIsDown('d'),
-						A: bDown || window.CharIsDown('k'),
-						B: bDown || window.CharIsDown('j'),
+						Sel:   currentKindleKeys.LPageNext || currentKindleKeys.LPagePrev,
+						Start: currentKindleKeys.RPageNext || currentKindleKeys.RPagePrev,
+						Up:    currentKindleKeys.Up,
+						Down:  currentKindleKeys.Down,
+						Left:  currentKindleKeys.Left,
+						Right: currentKindleKeys.Right,
+						A:     currentKindleKeys.Keyboard,
+						B:     currentKindleKeys.Back,
 					},
 				}
 
-				numDown := 'x'
-				for r := '0'; r <= '9'; r++ {
-					if window.CharIsDown(r) {
-						numDown = r
-						break
-					}
-				}
-				if window.CharIsDown('m') {
-					snapshotMode = 'm'
-				} else if window.CharIsDown('l') {
-					snapshotMode = 'l'
-				}
-				window.InputMutex.Unlock()
-
-				if numDown > '0' && numDown <= '9' {
-					snapFilename := snapshotPrefix + string(numDown)
-					if snapshotMode == 'm' {
-						snapshotMode = 'x'
-						snapshot := emu.MakeSnapshot()
-						ioutil.WriteFile(snapFilename, snapshot, os.FileMode(0644))
-					} else if snapshotMode == 'l' {
-						snapshotMode = 'x'
-						snapBytes, err := ioutil.ReadFile(snapFilename)
-						if err != nil {
-							fmt.Println("failed to load snapshot:", err)
-							continue
-						}
-						newEmu, err := emu.LoadSnapshot(snapBytes)
-						if err != nil {
-							fmt.Println("failed to load snapshot:", err)
-							continue
-						}
-						emu = newEmu
-					}
-				}
 				lastInputPollTime = time.Now()
 			}
 		}
@@ -165,34 +124,39 @@ func startEmu(filename string, window *glimmer.WindowState, emu dmgo.Emulator) {
 		emu.UpdateInput(newInput)
 		emu.Step()
 
-		bufferAvailable := audio.BufferAvailable()
-
-		// TODO: set this up so it's useful, but doesn't spam
-		// if bufferAvailable == audio.BufferSize() {
-		// fmt.Println("Platform AudioBuffer empty!")
-		// }
-
-		audioBufSlice := workingAudioBuffer[:bufferAvailable]
-		audio.Write(emu.ReadSoundBuffer(audioBufSlice))
-
 		if emu.FlipRequested() {
-			window.RenderMutex.Lock()
-			copy(window.Pix, emu.Framebuffer())
-			window.RequestDraw()
-			window.RenderMutex.Unlock()
+			fb := emu.Framebuffer()
+			for i := 0; i < len(fb); i += 4 {
+				r, g, b, a := fb[i], fb[i+1], fb[i+2], fb[i+3]
+				c := color.RGBA{r, g, b, a}
+				x := (i / 4) % 160 // + (600/2 - 160/2)
+				y := (i / 4) / 160 // + (800/2 - 144/2)
 
-			frameTimer.WaitForFrametime()
-			if emu.InDevMode() {
-				frameTimer.PrintStatsEveryXFrames(60*5)
+				x *= 2
+				y *= 2
+
+				x += (600/2 - 160)
+				y += (800/2 - 144)
+
+				kindle.Framebuffer().Set(x, y, c)
+				kindle.Framebuffer().Set(x+1, y, c)
+				kindle.Framebuffer().Set(x+1, y+1, c)
+				kindle.Framebuffer().Set(x, y+1, c)
 			}
+			kindle.Framebuffer().DirtyRefresh()
 
-			if time.Now().Sub(lastSaveTime) > 5*time.Second {
+			//frameTimer.WaitForFrametime()
+			//if emu.InDevMode() {
+			//	frameTimer.PrintStatsEveryXFrames(60 * 5)
+			//}
+
+			/*if time.Now().Sub(lastSaveTime) > 5*time.Second {
 				ram := emu.GetCartRAM()
 				if len(ram) > 0 {
 					ioutil.WriteFile(saveFilename, ram, os.FileMode(0644))
 					lastSaveTime = time.Now()
 				}
-			}
+			}*/
 		}
 	}
 }
