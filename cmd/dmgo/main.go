@@ -1,8 +1,6 @@
 package main
 
 import (
-	"image/color"
-
 	"github.com/simsor/go-kindle/kindle"
 	"github.com/theinternetftw/dmgo"
 
@@ -96,6 +94,7 @@ func startEmu(filename string, emu dmgo.Emulator) {
 	line := make([]byte, 2*160)
 	xOffset := (600/2 - 160)
 	yOffset := (800/2 - 144)
+
 	for {
 
 		count++
@@ -133,11 +132,10 @@ func startEmu(filename string, emu dmgo.Emulator) {
 			for l := 0; l < 144; l++ {
 				offset := l * 4 * 160
 				for i := 0; i < 160*4; i += 4 {
-					r, g, b := fb[i+offset], fb[i+1+offset], fb[i+2+offset]
-					c := color.GrayModel.Convert(color.RGBA{r, g, b, 255})
-					r2, _, _, _ := c.RGBA()
-					line[(i/4)*2] = ^byte(r2)
-					line[(i/4)*2+1] = ^byte(r2)
+					r := fb[i+offset] // we're skipping all other channels on purpose:
+					// the GB only displays 4 colors, and they are 255, 170 and 85
+					line[(i/4)*2] = ^byte(r)
+					line[(i/4)*2+1] = ^byte(r)
 				}
 
 				copy(screen[(l*2+yOffset)*600+xOffset:], line)
