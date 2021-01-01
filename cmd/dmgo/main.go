@@ -131,11 +131,11 @@ func startEmu(filename string, emu dmgo.Emulator) {
 			fb := emu.Framebuffer()
 			for l := 0; l < 144; l++ {
 				offset := l * 4 * 160
-				for i := 0; i < 160*4; i += 4 {
+				for i, j := 0, 0; i < 160*4; i, j = i+4, j+2 {
 					r := fb[i+offset] // we're skipping all other channels on purpose:
 					// the GB only displays 4 colors, and they are 255, 170 and 85
-					line[(i/4)*2] = ^byte(r)
-					line[(i/4)*2+1] = ^byte(r)
+					line[j] = ^byte(r)
+					line[j+1] = ^byte(r)
 				}
 
 				copy(screen[(l*2+yOffset)*600+xOffset:], line)
