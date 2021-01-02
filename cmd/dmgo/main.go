@@ -154,14 +154,15 @@ func startEmu(filename string, emu dmgo.Emulator) {
 
 func assert(test bool, msg string) {
 	if !test {
-		fmt.Println(msg)
-		os.Exit(1)
+		dieIf(fmt.Errorf(msg))
 	}
 }
 
 func dieIf(err error) {
 	if err != nil {
-		fmt.Println(err)
+		kindle.ClearScreen()
+		kindle.DrawText(1, 1, err.Error())
+		time.Sleep(5 * time.Second)
 		os.Exit(1)
 	}
 }
