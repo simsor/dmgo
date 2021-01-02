@@ -49,8 +49,6 @@ func updateKeyState() {
 		currentKindleKeys.Back = v
 	case kindle.Keyboard:
 		currentKindleKeys.Keyboard = v
-	case kindle.Menu:
-		currentKindleKeys.Menu = v
 	case kindle.LPagePrev:
 		currentKindleKeys.LPagePrev = v
 	case kindle.LPageNext:
@@ -59,6 +57,8 @@ func updateKeyState() {
 		currentKindleKeys.RPagePrev = v
 	case kindle.RPageNext:
 		currentKindleKeys.RPageNext = v
+	case kindle.Menu:
+		kindle.Framebuffer().FullRefresh()
 	case kindle.Home:
 		kindle.ClearScreen()
 		os.Exit(0)
