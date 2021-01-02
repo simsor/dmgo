@@ -2,11 +2,18 @@ package dmgo
 
 import (
 	"sort"
+
+	"github.com/simsor/go-kindle/kindle"
+)
+
+var (
+	xOffset = (600 / 2) - 160
+	yOffset = ((800 / 2) - 144) * 600
 )
 
 type lcd struct {
 	// not marshalled in snapshot
-	framebuffer [160 * 144 * 4]byte
+	framebuffer []byte
 
 	// everything else marshalled
 
@@ -142,6 +149,8 @@ func (lcd *lcd) init(cs *cpuState) {
 	lcd.CGBMode = cs.CGBMode
 	lcd.BGWindowPrioritiesActive = !lcd.CGBMode
 	lcd.AccessingOAM = true // at start of line
+
+	lcd.framebuffer = kindle.Framebuffer().Buffer()
 }
 
 func (lcd *lcd) writeVideoRAM(addr uint16, val byte) {
@@ -573,29 +582,36 @@ func (lcd *lcd) renderSpriteAtScanline(e *oamEntry, y byte) {
 	}
 }
 
+// KINDLE FRAMEBUFFER
+
 func (lcd *lcd) getFramebufferPixel(xByte, yByte byte) (byte, byte, byte) {
 	x, y := int(xByte), int(yByte)
-	yIdx := y * 160 * 4
-	r := lcd.framebuffer[yIdx+x*4+0]
-	g := lcd.framebuffer[yIdx+x*4+1]
-	b := lcd.framebuffer[yIdx+x*4+2]
-	return r, g, b
+	yIdx := (y * 2 * 600) + yOffset
+	xIdx := xOffset + (x * 2)
+	r := ^lcd.framebuffer[yIdx+xIdx]
+	return r, r, r
 }
 func (lcd *lcd) setFramebufferPixel(xByte, yByte, r, g, b byte) {
 	x, y := int(xByte), int(yByte)
-	yIdx := y * 160 * 4
-	lcd.framebuffer[yIdx+x*4+0] = r
-	lcd.framebuffer[yIdx+x*4+1] = g
-	lcd.framebuffer[yIdx+x*4+2] = b
-	lcd.framebuffer[yIdx+x*4+3] = 0xff
+	yIdx := yOffset + (y * 2 * 600)
+	yPlusOneIdx := yOffset + ((y*2 + 1) * 600)
+	xIdx := xOffset + (x * 2)
+	xPlusOneIdx := xIdx + 1
+	lcd.framebuffer[yIdx+xIdx] = ^r
+	lcd.framebuffer[yIdx+xPlusOneIdx] = ^r
+	lcd.framebuffer[yPlusOneIdx+xIdx] = ^r
+	lcd.framebuffer[yPlusOneIdx+xPlusOneIdx] = ^r
 }
 func (lcd *lcd) fillScanline(val byte) {
-	yIdx := int(lcd.LYReg) * 160 * 4
+	yIdx := (int(lcd.LYReg) * 600 * 2) + yOffset
+	yPlusOneIdx := (int(lcd.LYReg)*2+1)*600 + yOffset
 	for x := 0; x < 160; x++ {
-		lcd.framebuffer[yIdx+x*4+0] = val
-		lcd.framebuffer[yIdx+x*4+1] = val
-		lcd.framebuffer[yIdx+x*4+2] = val
-		lcd.framebuffer[yIdx+x*4+3] = 0xff
+		xIdx := xOffset + (x * 2)
+
+		lcd.framebuffer[yIdx+xIdx] = ^val
+		lcd.framebuffer[yIdx+xIdx+1] = ^val
+		lcd.framebuffer[yPlusOneIdx+xIdx] = ^val
+		lcd.framebuffer[yPlusOneIdx+xIdx+1] = ^val
 	}
 }
 
