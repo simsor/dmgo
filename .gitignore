@@ -14,3 +14,5 @@ r
 *.exe
 
 /dmgo
+/extensions/dmgo/dmgo
+*.zip
