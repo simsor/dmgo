@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/simsor/dmgo"
 	"github.com/simsor/go-kindle/kindle"
-	"github.com/theinternetftw/dmgo"
 
 	"fmt"
 	"io/ioutil"
@@ -10,12 +10,16 @@ import (
 	"time"
 )
 
-func main() {
+func dmgoMain(cartFilename string) {
 	kindle.ClearScreen()
 	go kindleKeyWorker()
+	updateKindleInfo()
 
-	assert(len(os.Args) == 2, "usage: ./dmgo ROM_FILENAME")
-	cartFilename := os.Args[1]
+	go func() {
+		for range time.Tick(1 * time.Minute) {
+			updateKindleInfo()
+		}
+	}()
 
 	cartBytes, err := ioutil.ReadFile(cartFilename)
 	dieIf(err)
@@ -90,11 +94,7 @@ func startEmu(filename string, emu dmgo.Emulator) {
 	lastInputPollTime := time.Now()
 
 	count := 0
-	screen := kindle.Framebuffer().Buffer()
-	line := make([]byte, 2*160)
-	xOffset := (600/2 - 160)
-	yOffset := (800/2 - 144)
-
+	screenRefreshCount := 0
 	for {
 
 		count++
@@ -128,20 +128,13 @@ func startEmu(filename string, emu dmgo.Emulator) {
 		emu.Step()
 
 		if emu.FlipRequested() {
-			fb := emu.Framebuffer()
-			for l := 0; l < 144; l++ {
-				offset := l * 4 * 160
-				for i, j := 0, 0; i < 160*4; i, j = i+4, j+2 {
-					r := fb[i+offset] // we're skipping all other channels on purpose:
-					// the GB only displays 4 colors, and they are 255, 170 and 85
-					line[j] = ^byte(r)
-					line[j+1] = ^byte(r)
-				}
+			screenRefreshCount++
 
-				copy(screen[(l*2+yOffset)*600+xOffset:], line)
-				copy(screen[(l*2+1+yOffset)*600+xOffset:], line)
+			if screenRefreshCount%skipFrame == 0 {
+				// Only render one every N frames
+				screenRefreshCount = 0
+				kindle.Framebuffer().DirtyRefresh()
 			}
-			kindle.Framebuffer().DirtyRefresh()
 
 			//frameTimer.WaitForFrametime()
 			//if emu.InDevMode() {
@@ -171,4 +164,12 @@ func dieIf(err error) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func updateKindleInfo() {
+	kindle.DrawText(1, 1, "                          ")
+	kindle.DrawText(1, 2, "                          ")
+
+	kindle.DrawText(1, 1, time.Now().Format("15:04"))
+	kindle.DrawText(1, 2, fmt.Sprintf("Battery: %d", kindle.GetBatteryLevel()))
 }
